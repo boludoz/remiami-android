@@ -96,6 +96,13 @@ float mousePosY = 0.f;
 bool gJoystickConnected = false;  // True when joystick connected - hide touch UI
 
 TouchInfo touchInfo[10] = {0};
+
+// Timer.cpp: time of the last CTimer::Update
+#ifdef _WIN32
+extern uint32 oldPcTimer;
+#else
+extern double oldPcTimer;
+#endif
 static SDL_FingerID touchFingerIds[10] = {0};
 static bool touchSlotUsed[10] = {false};
 static SDL_Gamepad *gamepad1 = NULL;
@@ -2069,11 +2076,18 @@ main(int argc, char *argv[])
 					
 					case GS_PLAYING_GAME:
 					{
-						float ms = (float)CTimer::GetCurrentTimeInCycles() / (float)CTimer::GetCyclesPerMillisecond();
 						if ( RwInitialised )
 						{
-							if (!FrontEndMenuManager.m_PrefsFrameLimiter || (1000.0f / (float)RsGlobal.maxFPS) < ms)
+							// CTimer's cycle counter only has whole milliseconds here, which
+							// made a 120 fps limit run at ~111; use the timer directly.
+							double ms = (double)(RsTimer() - oldPcTimer);
+							double frameMs = 1000.0 / (double)RsGlobal.maxFPS;
+							if (!FrontEndMenuManager.m_PrefsFrameLimiter || ms >= frameMs)
 								RsEventHandler(rsIDLE, (void *)TRUE);
+							else if (frameMs - ms > 2.0)
+								// Sleep off most of the wait instead of spinning a core,
+								// which on phones only turns into heat and throttling.
+								SDL_DelayNS((Uint64)((frameMs - ms - 1.0) * 1000000.0));
 						}
 						break;
 					}
