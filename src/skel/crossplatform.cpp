@@ -228,7 +228,7 @@ char* casepath(char const* path, bool checkPathFirst)
     out[1] = 0;
     rl = 1;//TODO CLEAN UP EVERYTHING
 
-	bool cantProceed = false; // just convert slashes in what's left in string, don't correct case of letters(because we can't)
+	bool cantProceed = !d; // just convert slashes in what's left in string, don't correct case of letters(because we can't)
 	bool mayBeTrailingSlash = false;
 
 	while (c = strsep(&p, "/\\"))
