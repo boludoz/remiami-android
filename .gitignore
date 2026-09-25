@@ -595,3 +595,16 @@ src/extras/GitSHA1.cpp
 
 .waf3*
 .lock-waf_linux_build
+/android/.gradle
+android/.gradle/file-system.probe
+/android/.gradle
+*.probe
+android/.gradle/buildOutputCleanup/buildOutputCleanup.lock
+android/.gradle/buildOutputCleanup/outputFiles.bin
+android/.gradle/file-system.probe
+android/logcat_output.txt
+android/.gradle/buildOutputCleanup/buildOutputCleanup.lock
+android/.gradle/buildOutputCleanup/buildOutputCleanup.lock
+
+# Generated shader sources are committed on purpose
+!src/extras/shaders/obj/

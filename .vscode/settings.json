@@ -1,4 +1,5 @@
 {
+  "editor.formatOnSave": false,
   "C_Cpp.default.cStandard": "gnu11",
   "C_Cpp.default.cppStandard": "gnu++14",
   "C_Cpp.default.includePath": [
@@ -37,6 +38,12 @@
     "filesystem": "cpp",
     "complex": "cpp",
     "queue": "cpp",
-    "stack": "cpp"
+    "stack": "cpp",
+    "locale": "cpp",
+    "thread": "cpp",
+    "xlocale": "cpp",
+    "xlocmon": "cpp",
+    "xlocnum": "cpp",
+    "xloctime": "cpp"
   }
 }
