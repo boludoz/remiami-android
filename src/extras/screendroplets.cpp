@@ -60,6 +60,11 @@ static void *screenDroplet_PS;
 #ifdef RW_GL3
 static rw::gl3::Shader *screenDroplet;
 #endif
+#ifdef RW_VULKAN
+#include "shaders/obj/vk_im2d_UV2_vert_spv.inc"
+#include "shaders/obj/vk_screenDroplet_frag_spv.inc"
+static rw::vulkan::CustomShader *screenDroplet;
+#endif
 
 // platform specific
 static void openim2d_uv2(void);
@@ -126,6 +131,11 @@ ScreenDroplets::InitDraw(void)
 	assert(screenDroplet);
 	}
 #endif
+#ifdef RW_VULKAN
+	screenDroplet = rw::vulkan::createCustomIm2DShader(vk_im2d_UV2_vert_spv, sizeof(vk_im2d_UV2_vert_spv),
+		vk_screenDroplet_frag_spv, sizeof(vk_screenDroplet_frag_spv), TRUE);
+	assert(screenDroplet);
+#endif
 
 	ms_initialised = 1;
 }
@@ -153,6 +163,10 @@ ScreenDroplets::Shutdown(void)
 		screenDroplet->destroy();
 		screenDroplet = nil;
 	}
+#endif
+#ifdef RW_VULKAN
+	rw::vulkan::destroyCustomShader(screenDroplet);
+	screenDroplet = nil;
 #endif
 
 	closeim2d_uv2();
@@ -214,6 +228,9 @@ ScreenDroplets::Render(void)
 	rw::gl3::im2dOverrideShader = screenDroplet;
 	rw::gl3::setTexture(1, ms_screenTex);
 #endif
+#ifdef RW_VULKAN
+	rw::vulkan::setIm2DCustomShader(screenDroplet, nil, CPostFX::pBackBuffer);
+#endif
 
 	RenderBuffer::ClearRenderBuffer();
 	for(drop = &ms_drops[0]; drop < &ms_drops[MAXDROPS]; drop++)
@@ -228,6 +245,9 @@ ScreenDroplets::Render(void)
 #ifdef RW_GL3
 	rw::gl3::im2dOverrideShader = nil;
 	rw::gl3::setTexture(1, nil);
+#endif
+#ifdef RW_VULKAN
+	rw::vulkan::setIm2DCustomShader(nil);
 #endif
 
 	RwRenderStateSet(rwRENDERSTATEFOGENABLE, FALSE);
@@ -811,6 +831,25 @@ RenderIndexedPrimitive_UV2(RwPrimitiveType primType, Im2DVertexUV2 *vertices, Rw
 #ifndef RW_GL_USE_VAOS
 	disableAttribPointers(im2d_UV2_attribDesc, 4);
 #endif
+}
+#endif
+
+#ifdef RW_VULKAN
+// librw's Vulkan im2d reads the second uv itself while the droplet shader is set
+void
+openim2d_uv2(void)
+{
+}
+
+void
+closeim2d_uv2(void)
+{
+}
+
+void
+RenderIndexedPrimitive_UV2(RwPrimitiveType primType, Im2DVertexUV2 *vertices, RwInt32 numVertices, RwImVertexIndex *indices, RwInt32 numIndices)
+{
+	rw::im2d::RenderIndexedPrimitive((rw::PrimitiveType)primType, vertices, numVertices, indices, numIndices);
 }
 #endif
 

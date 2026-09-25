@@ -35,6 +35,14 @@ int32 u_contrastMult;
 rw::gl3::Shader *colourFilterVC;
 rw::gl3::Shader *contrast;
 #endif
+#ifdef RW_VULKAN
+// shaders/vk, compiled by shaders/vk/make_spirv.sh
+#include "shaders/obj/vk_im2d_vert_spv.inc"
+#include "shaders/obj/vk_colourfilterVC_frag_spv.inc"
+#include "shaders/obj/vk_contrast_frag_spv.inc"
+rw::vulkan::CustomShader *colourFilterVC;
+rw::vulkan::CustomShader *contrast;
+#endif
 
 void
 CPostFX::InitOnce(void)
@@ -173,6 +181,14 @@ CPostFX::Open(RwCamera *cam)
 	}
 
 #endif
+#ifdef RW_VULKAN
+	colourFilterVC = rw::vulkan::createCustomIm2DShader(vk_im2d_vert_spv, sizeof(vk_im2d_vert_spv),
+		vk_colourfilterVC_frag_spv, sizeof(vk_colourfilterVC_frag_spv));
+	assert(colourFilterVC);
+	contrast = rw::vulkan::createCustomIm2DShader(vk_im2d_vert_spv, sizeof(vk_im2d_vert_spv),
+		vk_contrast_frag_spv, sizeof(vk_contrast_frag_spv));
+	assert(contrast);
+#endif
 }
 
 void
@@ -205,6 +221,12 @@ CPostFX::Close(void)
 		contrast->destroy();
 		contrast = nil;
 	}
+#endif
+#ifdef RW_VULKAN
+	rw::vulkan::destroyCustomShader(colourFilterVC);
+	colourFilterVC = nil;
+	rw::vulkan::destroyCustomShader(contrast);
+	contrast = nil;
 #endif
 }
 
@@ -288,6 +310,10 @@ CPostFX::RenderOverlayShader(RwCamera *cam, int32 r, int32 g, int32 b, int32 a)
 		glUniform3fv(contrast->uniformLocations[u_contrastMult], 1, mult);
 		glUniform3fv(contrast->uniformLocations[u_contrastAdd], 1, add);
 #endif
+#ifdef RW_VULKAN
+		float params[8] = { mult[0], mult[1], mult[2], 0.0f, add[0], add[1], add[2], 0.0f };
+		rw::vulkan::setIm2DCustomShader(contrast, params);
+#endif
 	}else{
 		float f = Intensity;
 		float blurcolors[4];
@@ -304,6 +330,10 @@ CPostFX::RenderOverlayShader(RwCamera *cam, int32 r, int32 g, int32 b, int32 a)
 		colourFilterVC->use();
 		glUniform4fv(colourFilterVC->uniformLocations[u_blurcolor], 1, blurcolors);
 #endif
+#ifdef RW_VULKAN
+		float params[8] = { blurcolors[0], blurcolors[1], blurcolors[2], blurcolors[3], 0.0f, 0.0f, 0.0f, 0.0f };
+		rw::vulkan::setIm2DCustomShader(colourFilterVC, params);
+#endif
 	}
 	RwIm2DRenderIndexedPrimitive(rwPRIMTYPETRILIST, Vertex, 4, Index, 6);
 #ifdef RW_D3D9
@@ -311,6 +341,9 @@ CPostFX::RenderOverlayShader(RwCamera *cam, int32 r, int32 g, int32 b, int32 a)
 #endif
 #ifdef RW_OPENGL
 	rw::gl3::im2dOverrideShader = nil;
+#endif
+#ifdef RW_VULKAN
+	rw::vulkan::setIm2DCustomShader(nil);
 #endif
 }
 
