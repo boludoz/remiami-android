@@ -1,46 +1,83 @@
 @echo off
-REM Script para compilar reVC para Android usando Gradle
-
-REM Configuración de rutas
-set GRADLE_HOME=C:\Gradle
-set ANDROID_SDK_ROOT=C:\AndroidSDK
-set ANDROID_HOME=C:\AndroidSDK
-set PATH=%GRADLE_HOME%\bin;%ANDROID_SDK_ROOT%\platform-tools;%PATH%
+REM Script to compile reVC for Android using Gradle Wrapper
 
 echo ======================================
 echo   reVC Android Build Script
 echo ======================================
 echo.
 
-REM Verificar que Gradle existe
-if not exist "%GRADLE_HOME%\bin\gradle.bat" (
-    echo ERROR: Gradle no encontrado en %GRADLE_HOME%
-    echo Instala Gradle y ajusta la ruta GRADLE_HOME
-    exit /b 1
-)
-
-REM Verificar que el SDK existe
-if not exist "%ANDROID_SDK_ROOT%" (
-    echo ERROR: Android SDK no encontrado en %ANDROID_SDK_ROOT%
-    echo Instala el Android SDK y ajusta la ruta ANDROID_SDK_ROOT
-    exit /b 1
-)
-
-REM Ir al directorio del proyecto Android
+REM Go to the Android project directory
 cd /d "%~dp0"
 
-echo Usando Gradle: %GRADLE_HOME%
-echo Usando Android SDK: %ANDROID_SDK_ROOT%
+REM Setup Android SDK path (local to project if not set globally)
+if "%ANDROID_SDK_ROOT%"=="" (
+    set "ANDROID_SDK_ROOT=%LOCALAPPDATA%\Android\Sdk"
+    echo Using default Android SDK location: %ANDROID_SDK_ROOT%
+) else (
+    echo Using Android SDK: %ANDROID_SDK_ROOT%
+)
+
+set ANDROID_HOME=%ANDROID_SDK_ROOT%
+
+REM Create licenses directory and accept licenses automatically
+if not exist "%ANDROID_SDK_ROOT%\licenses" mkdir "%ANDROID_SDK_ROOT%\licenses"
+
+echo Accepting Android SDK licenses...
+(
+echo.
+echo 24333f8a63b6825ea9c5514f83c2829b004d1fee
+) > "%ANDROID_SDK_ROOT%\licenses\android-sdk-license"
+
+(
+echo.
+echo 84831b9409646a918e30573bab4c9c91346d8abd
+) > "%ANDROID_SDK_ROOT%\licenses\android-sdk-preview-license"
+
+(
+echo.
+echo d975f751698a77b662f1254ddbeed3901e976f5a
+) > "%ANDROID_SDK_ROOT%\licenses\intel-android-extra-license"
+
+(
+echo.
+echo 33b6a2b64607f11b759f320ef9dff4ae5c47d97a
+) > "%ANDROID_SDK_ROOT%\licenses\google-gdk-license"
+
+(
+echo.
+echo e9acab5b5fbb560a72cfaecce8946896ff6aab9d
+) > "%ANDROID_SDK_ROOT%\licenses\mips-android-sysimage-license"
+
+echo Licenses accepted successfully.
 echo.
 
-REM Verificar argumento
+REM Download gradle-wrapper.jar if it doesn't exist
+if not exist "gradle\wrapper\gradle-wrapper.jar" (
+    echo Downloading Gradle Wrapper...
+    powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar' -OutFile 'gradle\wrapper\gradle-wrapper.jar'}"
+    if %ERRORLEVEL% NEQ 0 (
+        echo ERROR: Failed to download Gradle Wrapper
+        echo Please download it manually or use a system with Gradle installed
+        goto :end
+    )
+)
+
+REM Check if gradlew.bat exists
+if not exist "gradlew.bat" (
+    echo ERROR: gradlew.bat not found
+    echo Please ensure the Gradle Wrapper is properly set up
+    goto :end
+)
+
+REM Check argument
 if "%1"=="" (
-    echo Uso: build_android.bat [debug^|release^|clean]
+    echo Usage: build_android.bat [debug^|release^|clean^|install]
     echo.
-    echo Comandos:
-    echo   debug   - Compila version debug
-    echo   release - Compila version release
-    echo   clean   - Limpia archivos de compilacion
+    echo Commands:
+    echo   debug   - Build debug version
+    echo   release - Build release version
+    echo   clean   - Clean build files
+    echo   install - Install debug APK to connected device
     echo.
     set BUILD_TYPE=debug
 ) else (
@@ -48,34 +85,45 @@ if "%1"=="" (
 )
 
 if "%BUILD_TYPE%"=="clean" (
-    echo Limpiando proyecto...
-    call "%GRADLE_HOME%\bin\gradle.bat" clean
+    echo Cleaning project...
+    call gradlew.bat clean
+    goto :end
+)
+
+if "%BUILD_TYPE%"=="install" (
+    echo Installing DEBUG APK to connected device...
+    call gradlew.bat installDebug
+    if %ERRORLEVEL% EQU 0 (
+        echo APK installed successfully.
+    ) else (
+        echo Failed to install APK.
+    )
     goto :end
 )
 
 if "%BUILD_TYPE%"=="release" (
-    echo Compilando version RELEASE...
-    call "%GRADLE_HOME%\bin\gradle.bat" assembleRelease
+    echo Building RELEASE version...
+    call gradlew.bat assembleRelease
 ) else (
-    echo Compilando version DEBUG...
-    call "%GRADLE_HOME%\bin\gradle.bat" assembleDebug
+    echo Building DEBUG version...
+    call gradlew.bat assembleDebug
 )
 
 if %ERRORLEVEL% EQU 0 (
     echo.
     echo ======================================
-    echo   Compilacion exitosa!
+    echo   Build successful!
     echo ======================================
     echo.
     if "%BUILD_TYPE%"=="release" (
-        echo APK generado en: app\build\outputs\apk\release\
+        echo APK generated at: app\build\outputs\apk\release\
     ) else (
-        echo APK generado en: app\build\outputs\apk\debug\
+        echo APK generated at: app\build\outputs\apk\debug\
     )
 ) else (
     echo.
     echo ======================================
-    echo   Error en la compilacion
+    echo   Build failed
     echo ======================================
 )
 

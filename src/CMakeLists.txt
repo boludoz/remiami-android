@@ -15,7 +15,8 @@ function(header_directories RETURN_LIST)
     set(${RETURN_LIST} ${RELDIRS} PARENT_SCOPE)
 endfunction()
 
-header_directories(${PROJECT}_INCLUDES)
+# Collect all header directories
+header_directories(INCLUDE_DIRS)
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/extras/GitSHA1.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/extras/GitSHA1.cpp" @ONLY)
 list(APPEND ${PROJECT}_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/extras/GitSHA1.cpp")
@@ -29,10 +30,11 @@ target_link_libraries(${EXECUTABLE} PRIVATE
     Threads::Threads
 )
 
-target_include_directories(${EXECUTABLE}
-    PRIVATE
-        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
-        $<BUILD_INTERFACE:${${PROJECT}_INCLUDES}>
+target_include_directories(${EXECUTABLE} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${INCLUDE_DIRS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/fakerw
+    ${PROJECT_SOURCE_DIR}/vendor/librw
 )
 
 target_compile_definitions(${EXECUTABLE}
@@ -68,10 +70,6 @@ elseif(${PROJECT}_AUDIO STREQUAL "MSS")
     target_link_libraries(${EXECUTABLE} PRIVATE MilesSDK::MilesSDK)
 endif()
 
-find_package(mpg123 REQUIRED)
-target_link_libraries(${EXECUTABLE} PRIVATE
-    MPG123::libmpg123
-)
 if(${PROJECT}_WITH_OPUS)
     find_package(opusfile REQUIRED)
     target_link_libraries(${EXECUTABLE} PRIVATE
