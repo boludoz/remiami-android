@@ -90,11 +90,36 @@ CTouchControllerState CPad::OldTouchControllerState;
 CTouchControllerState CPad::NewTouchControllerState;
 CTouchControllerState CPad::TempTouchControllerState;
 
-CTouch gTouch;
+// gTouch está definido en Touch.cpp
 
 #ifdef DETECT_PAD_INPUT_SWITCH
 bool CPad::IsAffectedByController = false;
 #endif
+
+static void
+ApplyTouchToPad(CPad *pad)
+{
+	if(pad == nil)
+		return;
+
+	if(gTouch.moveAxisX != 0)
+		pad->PCTempJoyState.LeftStickX = gTouch.moveAxisX;
+	if(gTouch.moveAxisY != 0)
+		pad->PCTempJoyState.LeftStickY = gTouch.moveAxisY;
+	if(gTouch.lookAxisX != 0)
+		pad->PCTempJoyState.RightStickX = gTouch.lookAxisX;
+	if(gTouch.lookAxisY != 0)
+		pad->PCTempJoyState.RightStickY = gTouch.lookAxisY;
+
+	if(gTouch.getButton(BtnType::CAR))
+		pad->PCTempJoyState.Triangle = 255;
+	if(gTouch.getButton(BtnType::ATTACK))
+		pad->PCTempJoyState.Circle = 255;
+	if(gTouch.getButton(BtnType::JUMP))
+		pad->PCTempJoyState.Square = 255;
+	if(gTouch.getButton(BtnType::SPRINT))
+		pad->PCTempJoyState.Cross = 255;
+}
 
 _TODO("gbFastTime");
 extern bool gbFastTime;
@@ -1749,6 +1774,7 @@ void CPad::UpdatePads(void)
 #ifdef LIBRW_SDL3
 	_InputPollEvents();
 #endif
+	gTouch.Update();
 	GetPad(0)->UpdateMouse();
 	GetPad(0)->UpdateTouch();
 #ifdef XINPUT
@@ -1757,6 +1783,7 @@ void CPad::UpdatePads(void)
 #else
 	CapturePad(0);
 #endif
+	ApplyTouchToPad(GetPad(0));
 
 	// Improve keyboard input latency part 1
 #ifdef FIX_BUGS
@@ -2771,6 +2798,9 @@ int32 CPad::GetWeapon(void)
 	if ( ArePlayerControlsDisabled() )
 		return false;
 
+	if (gTouch.getButton(BtnType::ATTACK))
+		return 255;
+
 	switch (CURMODE)
 	{
 		case 0:
@@ -2803,6 +2833,9 @@ bool CPad::WeaponJustDown(void)
 {
 	if ( ArePlayerControlsDisabled() )
 		return false;
+
+	if (gTouch.getButtonJustDown(BtnType::ATTACK))
+		return true;
 
 	switch (CURMODE)
 	{
@@ -3136,6 +3169,10 @@ bool CPad::GetSprint(void)
 {
 	if ( ArePlayerControlsDisabled() )
 		return false;
+
+	if (gTouch.getButton(BtnType::SPRINT))
+		return true;
+
 	switch (CURMODE)
 	{
 		case 0:

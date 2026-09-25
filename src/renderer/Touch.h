@@ -1,105 +1,72 @@
 #pragma once
-#include "common.h"
-#include <vector>
 
-enum BtnType{
-    DEFAULT,
-    STICK,
-    JOY,
-    CAR,
-    JUMP,
-    LOOK
+// Wrapper de compatibilidad - redirige al nuevo sistema CTouchInput
+#include "TouchInput.h"
+
+// Enum de compatibilidad con el código existente en Pad.cpp
+enum BtnType {
+	DEFAULT,
+	STICK,
+	JOY,
+	CAR,      // Entrar/Salir vehículo -> TOUCH_TRIANGLE
+	JUMP,     // Saltar -> TOUCH_CROSS
+	ATTACK,   // Atacar -> TOUCH_CIRCLE
+	SPRINT,   // Correr -> TOUCH_SQUARE
+	LOOK
 };
 
-class Btn
-{
+// Mapeo de BtnType a TouchButtonID
+inline TouchButtonID MapBtnTypeToTouchID(BtnType type) {
+	switch (type) {
+		case CAR:    return TOUCH_TRIANGLE;
+		case JUMP:   return TOUCH_CROSS;
+		case ATTACK: return TOUCH_CIRCLE;
+		case SPRINT: return TOUCH_SQUARE;
+		default:     return TOUCH_NONE;
+	}
+}
+
+// Clase de compatibilidad con el código existente
+class CTouch {
 public:
-    Btn(float x1, float y1, float x2, float y2, BtnType type, CRGBA color, bool preserveAspect);
-    float x1, y1, x2, y2;
-    CRect rect;
-    CRGBA color;
-    BtnType type;
-    bool preserveAspect;
-    bool touched = false;
-    int fingerID;
-    bool wasTouchedLastFrame;
-    
-    CRect makeBtnRect(float normX1, float normY1, float normX2, float normY2) {
-        float aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
-        float virtualW = SCREEN_HEIGHT * aspect;
-        float offsetX = (SCREEN_WIDTH - virtualW) * 0.5f;
+	// Variables de compatibilidad con Pad.cpp (accesibles directamente)
+	int16 moveAxisX;
+	int16 moveAxisY;
+	int16 lookAxisX;
+	int16 lookAxisY;
+	
+	CTouch() : moveAxisX(0), moveAxisY(0), lookAxisX(0), lookAxisY(0) {}
+	
+	void Init() { 
+		CTouchInput::Init(); 
+		moveAxisX = moveAxisY = 0;
+		lookAxisX = lookAxisY = 0;
+	}
+	
+	void Update() {
+		CTouchInput::Update();
+		
+		moveAxisX = CTouchInput::GetLeftStickX();
+		moveAxisY = CTouchInput::GetLeftStickY();
+		lookAxisX = CTouchInput::GetRightStickX();
+		lookAxisY = CTouchInput::GetRightStickY();
+	}
 
-        if(preserveAspect)
-             y2 = y1 + (x2 - x1) * (SCREEN_WIDTH / float(SCREEN_HEIGHT));
-        
-        float x1v = normX1 * virtualW;
-        float x2v = normX2 * virtualW;
-        float y1v = normY1 * SCREEN_HEIGHT;
-        float y2v = normY2 * SCREEN_HEIGHT;
-
-        return CRect(offsetX + x1v, y1v, offsetX + x2v,y2v);
-    }
-    
-    std::pair<float,float>getCenter(){
-        float x = x1 + (x2 - x1) / 2;
-        float y = y1 + (y2 - y1) / 2;
-        return std::make_pair(x, y);
-    }
-    
-    void setCenter(float x, float y){
-        float halfX = (x2 - x1) / 2;
-        float halfY = (y2 - y1) / 2;
-        
-        x1 = x - halfX;
-        x2 = x + halfX;
-        y1 = y - halfY;
-        y2 = y + halfY;
-    }
-    void setCenter(const std::pair<float, float> &center)
-    {
-        setCenter(center.first, center.second);
-    }
-    
-    void updateRect(){rect = makeBtnRect(x1, y1, x2, y2);}
+	void Draw() { 
+		CTouchInput::Draw();
+	}
+	
+	bool getButtonJustDown(BtnType type) {
+		TouchButtonID id = MapBtnTypeToTouchID(type);
+		if (id == TOUCH_NONE) return false;
+		return CTouchInput::IsButtonJustPressed(id);
+	}
+	
+	bool getButton(BtnType type) {
+		TouchButtonID id = MapBtnTypeToTouchID(type);
+		if (id == TOUCH_NONE) return false;
+		return CTouchInput::IsButtonPressed(id);
+	}
 };
 
-class CTouch
-{
-public:
-    void Init();
-    void Draw();
-    void UpdateStick();
-    void UpdateLook();
-    void checkFinger(Btn& btn);
-    void updateButton(Btn& btn);
-    
-    bool getButtonJustDown(BtnType type){
-        for(const Btn& btn : touchButtons)
-        {
-            if(btn.type == type && btn.touched && !btn.wasTouchedLastFrame)
-                return true;
-        }
-        return false;
-    }
-    
-    bool getButton(BtnType type){
-        for(const Btn& btn : touchButtons)
-        {
-            if(btn.type == type && btn.touched && !btn.wasTouchedLastFrame)
-                return true;
-        }
-        return false;
-    }
-    
-    int16 moveAxisX, moveAxisY;
-    int16 lookAxisX, lookAxisY; //Oh god..
-    float smoothedLookX = 0.0f;
-    float smoothedLookY = 0.0f;
-
-private:
-    std::vector<Btn> touchButtons;
-    Btn* stickBtn = nullptr;
-    Btn* joyBtn = nullptr;
-    
-    int move_finger, look_finger; //five fingers in my ass
-};
+extern CTouch gTouch;
