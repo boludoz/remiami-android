@@ -31,6 +31,20 @@ android {
         }
     }
 
+    // CI signs with a fixed key from the repository secrets so updates install
+    // over each other; locally, or without the secrets, the debug key is used.
+    val ciKeystore = System.getenv("REVC_KEYSTORE")
+    signingConfigs {
+        if (ciKeystore != null && file(ciKeystore).exists()) {
+            create("ci") {
+                storeFile = file(ciKeystore)
+                storePassword = System.getenv("REVC_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("REVC_KEY_ALIAS")
+                keyPassword = System.getenv("REVC_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -38,10 +52,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // release APKs must be signed to install; fall back to the debug key
+            signingConfig = signingConfigs.findByName("ci") ?: signingConfigs.getByName("debug")
         }
         debug {
             isDebuggable = true
             isJniDebuggable = true
+            signingConfigs.findByName("ci")?.let { signingConfig = it }
         }
     }
 
