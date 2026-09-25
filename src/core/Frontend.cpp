@@ -725,14 +725,19 @@ CMenuManager::CheckCodesForControls(int typeOfControl)
 	}
 }
 
+// Whichever pointer moved last drives hovering. Checking the mouse and the
+// touch position together let a mouse cursor parked over another row (on a
+// phone it never moves) win over the row that was actually tapped.
+static bool gMenuPointerIsTouch = false;
+
 bool
 CMenuManager::CheckHover(int x1, int x2, int y1, int y2)
 {
-	bool mouse = m_nMousePosX > x1 && m_nMousePosX < x2 &&
-				 m_nMousePosY > y1 && m_nMousePosY < y2;
-	bool touch = m_nTouchPosX > x1 && m_nTouchPosX < x2 &&
-				 m_nTouchPosY > y1 && m_nTouchPosY < y2;
-	return mouse || touch;
+	if (gMenuPointerIsTouch)
+		return m_nTouchPosX > x1 && m_nTouchPosX < x2 &&
+		       m_nTouchPosY > y1 && m_nTouchPosY < y2;
+	return m_nMousePosX > x1 && m_nMousePosX < x2 &&
+	       m_nMousePosY > y1 && m_nMousePosY < y2;
 }
 
 void
@@ -4406,6 +4411,11 @@ CMenuManager::UserInput(void)
 		}
 	}
 
+	if (m_nTouchTempPosX != m_nTouchPosX || m_nTouchTempPosY != m_nTouchPosY || CPad::GetPad(0)->GetFinger())
+		gMenuPointerIsTouch = true;
+	else if (m_nMouseTempPosX != m_nMousePosX || m_nMouseTempPosY != m_nMousePosY)
+		gMenuPointerIsTouch = false;
+
 	m_nMouseOldPosX = m_nMousePosX;
 	m_nMouseOldPosY = m_nMousePosY;
 	m_nMousePosX = m_nMouseTempPosX;
@@ -4453,7 +4463,10 @@ CMenuManager::UserInput(void)
 			}
 		}
 		if (hoveredCoords.isValid && CheckHover(hoveredCoords.x1, hoveredCoords.x2, hoveredCoords.y1, hoveredCoords.y2)){ //1sh0zer: still checking
-			if ((CPad::GetPad(0)->GetLeftMouseJustUp() || CPad::GetPad(0)->GetFingerJustDown()) && m_nCurrScreen != MENUPAGE_MAP) {
+			// Select when the finger lifts, like the mouse does on release: on the
+			// frame it goes down the hovered row still comes from the last touch
+			// position, so the previously tapped option got activated instead.
+			if ((CPad::GetPad(0)->GetLeftMouseJustUp() || CPad::GetPad(0)->GetFingerJustUp()) && m_nCurrScreen != MENUPAGE_MAP) {
 				if (m_nHoverOption == HOVEROPTION_RANDOM_ITEM)
 					optionSelected = true;
 				else if (m_nHoverOption == HOVEROPTION_NEXT_RADIO)
