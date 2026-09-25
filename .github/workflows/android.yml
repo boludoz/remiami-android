@@ -31,10 +31,11 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # The action's default package list still asks for the long removed
+      # "tools" package, so name everything explicitly.
       - uses: android-actions/setup-android@v3
-
-      - name: Install NDK, CMake and platform
-        run: sdkmanager --install "ndk;26.1.10909125" "cmake;3.22.1" "platforms;android-34" "build-tools;34.0.0"
+        with:
+          packages: platform-tools platforms;android-34 build-tools;34.0.0 ndk;26.1.10909125 cmake;3.22.1
 
       - uses: gradle/actions/setup-gradle@v4
 
