@@ -5016,17 +5016,17 @@ CMenuManager::ProcessUserInput(uint8 goDown, uint8 goUp, uint8 optionSelected, u
 					ControlsManager.MakeControllerActionsBlank();
 					ControlsManager.InitDefaultControlConfiguration();
 					ControlsManager.InitDefaultControlConfigMouse(MousePointerStateHelper.GetMouseSetUp());
-#if !defined RW_GL3
+#if !defined(RW_GL3) && !defined(LIBRW_SDL3)
 					if (AllValidWinJoys.m_aJoys[JOYSTICK1].m_bInitialised) {
 						DIDEVCAPS devCaps;
 						devCaps.dwSize = sizeof(DIDEVCAPS);
 						PSGLOBAL(joy1)->GetCapabilities(&devCaps);
 						ControlsManager.InitDefaultControlConfigJoyPad(devCaps.dwButtons);
 					}
-#else
+#elif defined(LIBRW_SDL3)
 					if (PSGLOBAL(joy1) != NULL) {
 						int count;
-						count = SDL_JoystickNumButtons(PSGLOBAL(joy1));
+						count = SDL_GetNumJoystickButtons(PSGLOBAL(joy1));
 						ControlsManager.InitDefaultControlConfigJoyPad(count);
 					}
 #endif

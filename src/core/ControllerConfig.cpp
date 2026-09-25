@@ -1,4 +1,6 @@
-#include "SDL_gamecontroller.h"
+#if defined(LIBRW_SDL3)
+#include <SDL3/SDL_gamepad.h>
+#endif
 #define WITHDINPUT
 #include "common.h"
 #include "platform.h"
@@ -44,37 +46,45 @@ void CControllerConfigManager::MakeControllerActionsBlank()
 	}
 }
 
-#ifdef RW_GL3
+#if defined(RW_GL3) || defined(LIBRW_SDL3)
 int MapIdToButtonId(int mapId) {
+#if defined(LIBRW_SDL3)
 	switch (mapId) {
-		case SDL_CONTROLLER_BUTTON_A: // Cross
+		case SDL_GAMEPAD_BUTTON_SOUTH: // Cross
 			return 2;
-		case SDL_CONTROLLER_BUTTON_B: // Circle
+		case SDL_GAMEPAD_BUTTON_EAST: // Circle
 			return 1;
-		case SDL_CONTROLLER_BUTTON_X: // Square
+		case SDL_GAMEPAD_BUTTON_WEST: // Square
 			return 3;
-		case SDL_CONTROLLER_BUTTON_Y: // Triangle
+		case SDL_GAMEPAD_BUTTON_NORTH: // Triangle
 			return 4;
-		case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+		case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER:
 			return 7;
-		case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+		case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER:
 			return 8;
-		case SDL_CONTROLLER_BUTTON_BACK:
+		case SDL_GAMEPAD_BUTTON_BACK:
 			return 9;
-		case SDL_CONTROLLER_BUTTON_START:
+		case SDL_GAMEPAD_BUTTON_START:
 			return 12;
-		case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+		case SDL_GAMEPAD_BUTTON_LEFT_STICK:
 			return 10;
-		case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+		case SDL_GAMEPAD_BUTTON_RIGHT_STICK:
 			return 11;
-		case SDL_CONTROLLER_BUTTON_DPAD_UP:
+		case SDL_GAMEPAD_BUTTON_DPAD_UP:
 			return 13;
-		case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+		case SDL_GAMEPAD_BUTTON_DPAD_RIGHT:
 			return 14;
-		case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+		case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
 			return 15;
-		case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+		case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
 			return 16;
+		default:
+			return 0;
+	}
+
+#else
+	// GLFW or other
+	switch (mapId) {
 		// GLFW sends those as axes, so I added them here manually.
 		case 15: // Left trigger
 			return 5;
@@ -83,6 +93,7 @@ int MapIdToButtonId(int mapId) {
 		default:
 			return 0;
 	}
+#endif
 }
 #endif
 
@@ -98,7 +109,7 @@ int32 CControllerConfigManager::GetJoyButtonJustDown()
 		if (m_NewState.rgbButtons[i] & 0x80 && !(m_OldState.rgbButtons[i] & 0x80))
 			return i + 1;
 	}
-#elif defined RW_GL3
+#elif defined(RW_GL3) || defined(LIBRW_SDL3)
 	if (m_NewState.isGamepad) {
 		for (int32 i = 0; i < MAX_BUTTONS; i++) {
 			printf("Button number %d, NewState: %d, OldState: %d\n",i, m_NewState.mappedButtons[i], m_OldState.mappedButtons[i]);
@@ -2806,10 +2817,14 @@ void CControllerConfigManager::UpdateJoyButtonState(int32 padnumber)
 		else
 			m_aButtonStates[i] = false;
 	}
-#elif defined RW_GL3
+#elif defined(RW_GL3) || defined(LIBRW_SDL3)
 	if (m_NewState.isGamepad) {
 		for (int32 i = 0; i < MAX_BUTTONS; i++) {
+#ifdef LIBRW_SDL3
+			if (i == SDL_GAMEPAD_BUTTON_GUIDE)
+#else
 			if (i == SDL_CONTROLLER_BUTTON_GUIDE)
+#endif
 				continue;
 
 			m_aButtonStates[MapIdToButtonId(i)-1] = m_NewState.mappedButtons[i];

@@ -518,7 +518,7 @@ VALIDATE_SIZE(CPad, 0xFC);
 extern CPad Pads[MAX_PADS];
 
 //TODO: Refactor this piece of shit and make it safer
-#ifdef LIBRW_SDL2
+#if defined(LIBRW_SDL3)
 extern bool mouse1;
 extern bool mouse2;
 extern float mousePosX;

@@ -8,7 +8,7 @@
 }
 
 # Keep the launcher activity
--keep class com.sh0zer.revc.** { *; }
+-keep class com.revc.** { *; }
 
 # Keep SDL
 -keep class org.libsdl.app.** { *; }

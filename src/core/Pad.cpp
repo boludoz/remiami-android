@@ -1,5 +1,7 @@
-#include "SDL_events.h"
-#include "SDL_mouse.h"
+#if defined(LIBRW_SDL3)
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_mouse.h>
+#endif
 #define WITHDINPUT
 #include "common.h"
 #include "crossplatform.h"
@@ -44,6 +46,10 @@
 #include "CarCtrl.h"
 #include "TrafficLights.h"
 #include "Touch.h"
+
+#ifdef LIBRW_SDL3
+extern void _InputPollEvents(void);
+#endif
 
 #ifdef GTA_PS2
 #include "eetypes.h"
@@ -946,7 +952,7 @@ void CPad::UpdateMouse()
 			NewMouseControllerState = PCTempMouseControllerState;
 		}
 	}
-#elif !defined LIBRW_SDL2 
+#elif !defined(LIBRW_SDL3)
 	if ( IsForegroundApp() && PSGLOBAL(cursorIsInWindow) )
 	{
 		double xpos = 1.0f, ypos;
@@ -1740,6 +1746,9 @@ void CPad::UpdatePads(void)
 {
 	bool bUpdate = true;
 
+#ifdef LIBRW_SDL3
+	_InputPollEvents();
+#endif
 	GetPad(0)->UpdateMouse();
 	GetPad(0)->UpdateTouch();
 #ifdef XINPUT

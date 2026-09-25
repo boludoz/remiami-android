@@ -43,6 +43,9 @@ extern void _InputShutdownMouse();
 extern bool _InputMouseNeedsExclusive();
 extern void _InputInitialiseJoys();
 
+// SDL3: True when joystick connected - touch UI should hide
+extern bool gJoystickConnected;
+
 extern void HandleExit();
 
 extern void _psSelectScreenVM(RwInt32 videoMode);

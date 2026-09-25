@@ -10,16 +10,9 @@
 	path = vendor/opusfile
 	url = https://github.com/xiph/opusfile.git
 	branch = master
-[submodule "vendor/librw"]
-	path = vendor/librw
-	url = https://github.com/klaymen1n/librw.git
-	branch = master
 [submodule "lib"]
 	path = lib
 	url = https://github.com/klaymen1n/revc-android-3rdparty-libs
-[submodule "vendor/SDL2"]
-	path = vendor/SDL2
-	url = https://github.com/libsdl-org/SDL.git
 [submodule "vendor/glfw"]
 	path = vendor/glfw
 	url = https://github.com/kunitoki/glfw.git
@@ -29,3 +22,11 @@
 [submodule "vendor/mpg123"]
 	path = vendor/mpg123
 	url = https://github.com/boludoz/mpg123.git
+[submodule "vendor/SDL3"]
+	path = vendor/SDL3
+	url = https://github.com/libsdl-org/SDL.git
+	branch = main
+[submodule "vendor/librw"]
+	path = vendor/librw
+	url = https://github.com/boludoz/librw.git
+	branch = master

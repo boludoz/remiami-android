@@ -1,4 +1,4 @@
-#if defined RW_GL3 && !defined LIBRW_SDL2
+#if defined RW_GL3 && !defined LIBRW_SDL3
 
 #ifdef _WIN32
 #include <shlobj.h>

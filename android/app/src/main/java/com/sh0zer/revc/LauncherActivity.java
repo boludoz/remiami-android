@@ -1,4 +1,4 @@
-package com.sh0zer.revc;
+package com.revc;
 
 import android.Manifest;
 import android.content.Intent;
@@ -34,22 +34,52 @@ public class LauncherActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_launcher);
 
         // Determinar ruta de archivos del juego
         gameFilesPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/reVC";
-        
-        TextView pathText = findViewById(R.id.pathText);
-        pathText.setText("Ruta de archivos: " + gameFilesPath);
-
-        Button launchButton = findViewById(R.id.launchButton);
-        launchButton.setOnClickListener(v -> checkPermissionsAndLaunch());
 
         // Crear directorio si no existe
         File gameDir = new File(gameFilesPath);
         if (!gameDir.exists()) {
             gameDir.mkdirs();
         }
+
+        // Auto-launch si ya hay permisos y archivos
+        if (hasPermissions() && hasGameFiles()) {
+            launchGameDirectly();
+            return;
+        }
+
+        setContentView(R.layout.activity_launcher);
+        
+        TextView pathText = findViewById(R.id.pathText);
+        pathText.setText("Ruta de archivos: " + gameFilesPath);
+
+        Button launchButton = findViewById(R.id.launchButton);
+        launchButton.setOnClickListener(v -> checkPermissionsAndLaunch());
+    }
+
+    private boolean hasPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    private boolean hasGameFiles() {
+        File gta3Img = new File(gameFilesPath + "/models/gta3.img");
+        return gta3Img.exists();
+    }
+
+    private void launchGameDirectly() {
+        setenv(gameFilesPath);
+        Intent intent = new Intent(this, GameActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void checkPermissionsAndLaunch() {

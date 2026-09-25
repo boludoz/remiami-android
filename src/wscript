@@ -14,7 +14,7 @@ def options(opt):
 def configure(conf):
 	conf.env.append_unique('DEFINES',[
 		'RW_GL3',
-		'LIBRW_SDL2',
+		'LIBRW_SDL3',
 		'LIBRW',
 		'AUDIO_OAL',
 		'USE_OUR_VERSIONING'
@@ -152,7 +152,7 @@ def build(bld):
         'skel/skeleton.cpp',
         'skel/events.cpp',
         'skel/glfw/glfw.cpp',
-        'skel/sdl2/sdl2.cpp',
+        'skel/sdl3/sdl3.cpp',
         'collision/TempColModels.cpp',
         'collision/ColModel.cpp',
         'collision/VuCollision.cpp',

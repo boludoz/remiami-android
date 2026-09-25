@@ -1,6 +1,7 @@
 #ifndef _WIN32
 #include "common.h"
 #include "crossplatform.h"
+#include <SDL3/SDL.h>
 #include <signal.h>
 #include <pthread.h>
 #include <sys/types.h>
@@ -19,6 +20,7 @@
 #include <sys/resource.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <stdlib.h>
 
 #ifdef __linux__
 #include <sys/syscall.h>
@@ -143,19 +145,31 @@ CdStreamInit(int32 numChannels)
 	
 	char imgPath[MAX_PATH];
 	
-	if(getenv("GAMEFILES") == NULL)
+#ifdef ANDROID
+	const char *gameFiles = getenv("GAMEFILES");
+	if (gameFiles != NULL && gameFiles[0] != '\0') {
+		strncpy(imgPath, gameFiles, sizeof(imgPath)-2);
+		imgPath[sizeof(imgPath)-2] = '\0';
+		size_t len = strlen(imgPath);
+		if (len > 0 && imgPath[len-1] != '/' && imgPath[len-1] != '\\')
+			strcat(imgPath, "/");
+	} else
+#endif
 	{
-		char pwd[128];
-		getcwd(pwd, 128);
-		setenv("GAMEFILES", pwd, 1);
-		printf("%s\n", pwd);
+		const char *basePath = SDL_GetBasePath();
+		if (basePath != NULL)
+			strcpy(imgPath, basePath);
+		else {
+		// Fallback to current directory if SDL_GetBasePath fails
+			getcwd(imgPath, MAX_PATH);
+			strcat(imgPath, "/");
+		}
 	}
 	
-	printf("FILES %s\n", getenv("GAMEFILES"));
+	debug("Game files directory: %s\n", imgPath);
 	
-	strcpy(imgPath, getenv("GAMEFILES"));
-	strcat(imgPath, "/models/gta3.img");
-	printf("%s\n", imgPath);
+	strcat(imgPath, "models/gta3.img");
+	
 	if((statvfs(imgPath, &fsInfo)) < 0)
 	{
 		CDTRACE("can't get filesystem info");
@@ -526,6 +540,7 @@ CdStreamAddImage(char const *path)
 	}
 
 	if ( gImgFiles[gNumImages] == -1 ) {
+		debug("[CdStreamAddImage] ERROR: Failed to open IMG file: %s\n", path);
 		assert(false);
 		return false;
 	}

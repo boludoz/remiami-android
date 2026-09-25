@@ -1,4 +1,5 @@
 #include <cstring>
+#include <cstdlib>
 #define _CRT_SECURE_NO_WARNINGS
 #include <fcntl.h>
 #ifdef _WIN32
@@ -6,6 +7,7 @@
 #endif
 #include "common.h"
 #include "crossplatform.h"
+#include <SDL3/SDL.h>
 
 #include "FileMgr.h"
 
@@ -211,12 +213,33 @@ char CFileMgr::ms_dirName[128];
 void
 CFileMgr::Initialise(void)
 {
-	if(getenv("GAMEFILES") != NULL)
-	{
-		strcpy(ms_rootDirName, getenv("GAMEFILES"));
-		//_getcwd(ms_rootDirName, 128);
+#ifdef ANDROID
+	const char *gameFiles = getenv("GAMEFILES");
+	if (gameFiles != NULL && gameFiles[0] != '\0') {
+		strncpy(ms_rootDirName, gameFiles, sizeof(ms_rootDirName)-2);
+		ms_rootDirName[sizeof(ms_rootDirName)-2] = '\0';
+		size_t len = strlen(ms_rootDirName);
+		if (len > 0 && ms_rootDirName[len-1] != '/' && ms_rootDirName[len-1] != '\\')
+			strcat(ms_rootDirName, "/");
+	} else {
+		const char *basePath = SDL_GetBasePath();
+		if (basePath != NULL)
+			strcpy(ms_rootDirName, basePath);
+		else {
+			_getcwd(ms_rootDirName, 128);
+			strcat(ms_rootDirName, "/");
+		}
+	}
+#else
+	const char *basePath = SDL_GetBasePath();
+	if (basePath != NULL) {
+		strcpy(ms_rootDirName, basePath);
+	} else {
+		// Fallback to current directory
+		_getcwd(ms_rootDirName, 128);
 		strcat(ms_rootDirName, "/");
 	}
+#endif
 	debug("root dir is %s\n", ms_rootDirName);
 }
 

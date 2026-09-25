@@ -77,13 +77,13 @@ psGlobalType;
 
 void CapturePad(RwInt32 padID);
 void joysChangeCB(int jid, int event);
-#elif defined(LIBRW_SDL2)
+#elif defined(LIBRW_SDL3)
 
 #ifdef DETECT_JOYSTICK_MENU
 extern char gSelectedJoystickName[128];
 #endif
 
-#include "SDL.h"
+#include <SDL3/SDL.h>
 
 typedef struct
 {
@@ -91,7 +91,7 @@ typedef struct
     RwBool		fullScreen;
     RwV2d		lastMousePos;
     RwV2d		lastTouchPos;
-    int      mouseWheel; // glfw doesn't cache it
+    int      mouseWheel;
     bool        cursorIsInWindow;
     SDL_Joystick*        joy1;
     SDL_Joystick*        joy2;
