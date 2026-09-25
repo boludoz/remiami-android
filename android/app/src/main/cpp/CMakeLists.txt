@@ -29,6 +29,18 @@ if(NOT EXISTS "${REVC_SRC_DIR}")
 endif()
 
 # ============================================================================
+# Renderer: GL3 (GLES 3 through SDL3, supports every graphics option: Neo
+# pipelines, NEW_RENDERER, screen droplets) or VULKAN. Pick it with
+#   ./gradlew assembleRelease -PrevcRenderer=VULKAN
+# ============================================================================
+set(REVC_RENDERER "GL3" CACHE STRING "Renderer backend: GL3 or VULKAN")
+set_property(CACHE REVC_RENDERER PROPERTY STRINGS GL3 VULKAN)
+if(NOT REVC_RENDERER STREQUAL "GL3" AND NOT REVC_RENDERER STREQUAL "VULKAN")
+    message(FATAL_ERROR "REVC_RENDERER must be GL3 or VULKAN, got '${REVC_RENDERER}'")
+endif()
+message(STATUS "reVC renderer: ${REVC_RENDERER}")
+
+# ============================================================================
 # Módulo CMake personalizado para Android (FindOpenGL -> GLES3)
 # ============================================================================
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -93,7 +105,7 @@ add_subdirectory(${MPG123_DIR} ${CMAKE_CURRENT_BINARY_DIR}/mpg123)
 # --- librw ---
 message(STATUS "Configuring librw from submodule...")
 set(LIBRW_DIR "${REVC_VENDOR_DIR}/librw")
-set(LIBRW_PLATFORM "GL3" CACHE STRING "" FORCE)
+set(LIBRW_PLATFORM "${REVC_RENDERER}" CACHE STRING "" FORCE)
 set(LIBRW_GL3_GFXLIB "SDL3" CACHE STRING "" FORCE)
 set(LIBRW_INSTALL OFF CACHE BOOL "" FORCE)
 set(LIBRW_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -177,7 +189,7 @@ target_compile_definitions(${EXECUTABLE} PRIVATE
     LIBRW_SDL3
     AUDIO_OAL
     AUDIO_OAL_USE_MPG123
-    RW_GL3
+    RW_${REVC_RENDERER}
     CMAKE_BUILD
     USE_OUR_VERSIONING
     $<$<CONFIG:DEBUG>:DEBUG>
@@ -216,8 +228,13 @@ target_link_libraries(${EXECUTABLE}
     ${log-lib}
     ${android-lib}
 )
-find_library(gles3-lib GLESv3)
-find_library(egl-lib EGL)
-target_link_libraries(${EXECUTABLE} ${gles3-lib} ${egl-lib})
+if(REVC_RENDERER STREQUAL "VULKAN")
+    find_library(vulkan-lib vulkan)
+    target_link_libraries(${EXECUTABLE} ${vulkan-lib})
+else()
+    find_library(gles3-lib GLESv3)
+    find_library(egl-lib EGL)
+    target_link_libraries(${EXECUTABLE} ${gles3-lib} ${egl-lib})
+endif()
 
 message(STATUS "reVC Android build configured for ${ANDROID_ABI}")

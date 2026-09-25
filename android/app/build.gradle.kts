@@ -23,7 +23,9 @@ android {
                 cppFlags += listOf("-std=c++14", "-fexceptions", "-frtti")
                 arguments += listOf(
                     "-DANDROID_STL=c++_shared",
-                    "-DANDROID_TOOLCHAIN=clang"
+                    "-DANDROID_TOOLCHAIN=clang",
+                    // GL3 (default) or VULKAN: ./gradlew assembleRelease -PrevcRenderer=VULKAN
+                    "-DREVC_RENDERER=" + (project.findProperty("revcRenderer") ?: "GL3")
                 )
             }
         }
