@@ -32,6 +32,8 @@ using namespace rw::vulkan;
 #include "shaders/obj/vk_simple_frag_spv.inc"
 #include "shaders/obj/vk_neoGloss_vert_spv.inc"
 #include "shaders/obj/vk_neoGloss_frag_spv.inc"
+#include "shaders/obj/vk_default_UV2_vert_spv.inc"
+#include "shaders/obj/vk_neoWorldVC_frag_spv.inc"
 
 static void
 setVec4(float *dst, float x, float y, float z, float w)
@@ -136,10 +138,45 @@ DestroyVehiclePipe(void)
 
 /*
  * Neo World pipe
- *
- * The lightmap shader needs the second texture coordinate set, which the
- * Vulkan backend doesn't instance yet, so the world is drawn normally.
  */
+
+static CustomShader *neoWorldShader;
+
+static void
+worldRenderCB(rw::Atomic *atomic)
+{
+	using namespace rw;
+
+	if(!LightmapEnable){
+		rw::vulkan::defaultRenderCB(atomic);
+		return;
+	}
+
+	rw::vulkan::InstanceDataHeader *header = customBeginAtomic(atomic, neoWorldShader, nil, 0);
+	if(header == nil)
+		return;
+	InstanceData *inst = header->inst;
+	for(rw::uint32 n = 0; n < header->numMeshes; n++, inst++){
+		Material *m = inst->material;
+
+		float lightfactor[4];
+		Texture *dualtex = nil;
+		if(MatFX::getEffects(m) == MatFX::DUAL)
+			dualtex = MatFX::get(m)->getDualTexture();
+		if(dualtex){
+			lightfactor[0] = lightfactor[1] = lightfactor[2] = WorldLightmapBlend.Get()*LightmapMult;
+			customSetTexture1(dualtex->raster);
+		}else{
+			lightfactor[0] = lightfactor[1] = lightfactor[2] = 0.0f;
+			customSetTexture1(nil);
+		}
+		lightfactor[3] = m->color.alpha/255.0f;
+
+		RGBA color = { 255, 255, 255, m->color.alpha };
+		customDrawMesh(inst, lightfactor, &color);
+	}
+	customEndAtomic();
+}
 
 void
 CreateWorldPipe(void)
@@ -149,14 +186,21 @@ CreateWorldPipe(void)
 	else
 		ReadTweakValueTable((char*)work_buff, WorldLightmapBlend);
 
+	neoWorldShader = createCustomShader(vk_default_UV2_vert_spv, sizeof(vk_default_UV2_vert_spv),
+		vk_neoWorldVC_frag_spv, sizeof(vk_neoWorldVC_frag_spv), TRUE);
+	assert(neoWorldShader);
+
 	rw::vulkan::ObjPipeline *pipe = rw::vulkan::ObjPipeline::create();
-	pipe->renderCB = rw::vulkan::defaultRenderCB;
+	pipe->renderCB = worldRenderCB;
 	worldPipe = pipe;
 }
 
 void
 DestroyWorldPipe(void)
 {
+	destroyCustomShader(neoWorldShader);
+	neoWorldShader = nil;
+
 	((rw::vulkan::ObjPipeline*)worldPipe)->destroy();
 	worldPipe = nil;
 }
@@ -172,7 +216,7 @@ glossRenderCB(rw::Atomic *atomic)
 {
 	using namespace rw;
 
-	rw::vulkan::defaultRenderCB(atomic);
+	worldRenderCB(atomic);
 	if(!GlossEnable)
 		return;
 
@@ -329,4 +373,135 @@ DestroyRimLightPipes(void)
 }
 
 #endif
+
+#ifdef NEW_RENDERER
+#ifndef LIBRW
+#error "Need librw for NEW_PIPELINES"
+#endif
+
+#include "shaders/obj/vk_default_vert_spv.inc"
+
+namespace WorldRender
+{
+
+using namespace rw::vulkan;
+
+struct BuildingInst
+{
+	rw::Matrix matrix;
+	rw::Atomic *atomic;
+	uint8 fadeAlpha;
+	bool lighting;
+};
+BuildingInst blendInsts[3][2000];
+int numBlendInsts[3];
+
+static CustomShader *buildingShader;
+
+static CustomShader*
+GetBuildingShader(void)
+{
+	// created on first use: this code has no init hook of its own
+	if(buildingShader == nil)
+		buildingShader = createCustomShader(vk_default_vert_spv, sizeof(vk_default_vert_spv),
+			CustomPipes::vk_simple_frag_spv, sizeof(CustomPipes::vk_simple_frag_spv));
+	return buildingShader;
+}
+
+static bool
+IsTextureTransparent(RwTexture *tex)
+{
+	if(tex == nil || tex->raster == nil)
+		return false;
+	return GETVULKANRASTEREXT(tex->raster)->hasAlpha;
+}
+
+// Buildings are prelit, so they only get the ambient light
+static void
+SetBuildingOptions(CustomAtomicOptions *opts, BuildingInst *building)
+{
+	static rw::RGBAf black;
+	opts->world = &building->matrix;
+	opts->ambientOnly = TRUE;
+	opts->ambient = building->lighting ? pAmbient->color : black;
+}
+
+// Render all opaque meshes and put atomics that needs blending
+// into the deferred list.
+void
+AtomicFirstPass(RpAtomic *atomic, int pass)
+{
+	using namespace rw;
+
+	BuildingInst *building = &blendInsts[pass][numBlendInsts[pass]];
+	building->atomic = atomic;
+	building->fadeAlpha = 255;
+	building->lighting = !!(atomic->geometry->flags & rw::Geometry::LIGHT);
+	building->matrix = *atomic->getFrame()->getLTM();
+
+	CustomAtomicOptions opts;
+	SetBuildingOptions(&opts, building);
+	rw::vulkan::InstanceDataHeader *header = customBeginAtomic(atomic, GetBuildingShader(), nil, 0, &opts);
+	if(header == nil)
+		return;
+
+	bool defer = false;
+	InstanceData *inst = header->inst;
+	for(rw::uint32 i = 0; i < header->numMeshes; i++, inst++){
+		Material *m = inst->material;
+		if(inst->vertexAlpha || m->color.alpha != 255 ||
+		   IsTextureTransparent(m->texture)){
+			defer = true;
+			continue;
+		}
+		customDrawMesh(inst, nil);
+	}
+	customEndAtomic();
+	if(defer && numBlendInsts[pass] < (int)nelem(blendInsts[pass]))
+		numBlendInsts[pass]++;
+}
+
+void
+AtomicFullyTransparent(RpAtomic *atomic, int pass, int fadeAlpha)
+{
+	if(numBlendInsts[pass] >= (int)nelem(blendInsts[pass]))
+		return;
+	BuildingInst *building = &blendInsts[pass][numBlendInsts[pass]];
+	building->atomic = atomic;
+	building->fadeAlpha = fadeAlpha;
+	building->lighting = !!(atomic->geometry->flags & rw::Geometry::LIGHT);
+	building->matrix = *atomic->getFrame()->getLTM();
+	numBlendInsts[pass]++;
+}
+
+void
+RenderBlendPass(int pass)
+{
+	using namespace rw;
+
+	for(int i = 0; i < numBlendInsts[pass]; i++){
+		BuildingInst *building = &blendInsts[pass][i];
+
+		CustomAtomicOptions opts;
+		SetBuildingOptions(&opts, building);
+		rw::vulkan::InstanceDataHeader *header = customBeginAtomic(building->atomic, GetBuildingShader(), nil, 0, &opts);
+		if(header == nil)
+			continue;
+
+		InstanceData *inst = header->inst;
+		for(rw::uint32 j = 0; j < header->numMeshes; j++, inst++){
+			Material *m = inst->material;
+			if(!inst->vertexAlpha && m->color.alpha == 255 && !IsTextureTransparent(m->texture) && building->fadeAlpha == 255)
+				continue;	// already done this one
+
+			rw::RGBA color = m->color;
+			color.alpha = (color.alpha * building->fadeAlpha)/255;
+			customDrawMesh(inst, nil, &color);	// always modulate here
+		}
+		customEndAtomic();
+	}
+}
+}
+#endif
+
 #endif

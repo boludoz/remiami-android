@@ -318,10 +318,10 @@ enum Config {
 #ifdef LIBRW
 #define EXTENDED_COLOURFILTER		// more options for colour filter (replaces mblur)
 #define EXTENDED_PIPELINES		// custom render pipelines (includes Neo)
-#ifndef RW_VULKAN
-// not ported to the Vulkan backend yet (see extras/custompipes_vk.cpp)
-#define SCREEN_DROPLETS			// neo water droplets
 #define NEW_RENDERER		// leeds-like world rendering, needs librw
+#ifndef RW_VULKAN
+// not ported to the Vulkan backend yet
+#define SCREEN_DROPLETS			// neo water droplets
 #endif
 #endif
 
